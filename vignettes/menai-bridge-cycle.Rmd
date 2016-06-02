@@ -2,9 +2,9 @@
 title: "Cycling potential across the menai bridge"
 author: "Robin Lovelace"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output: rmarkdown::pdf_document
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{Cycling potential across the menai bridge}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -12,37 +12,41 @@ vignette: >
 
 This report explores cycling potential across the Menai Bridge.
 
-```{r preprocessing, eval=FALSE}
+```{r preprocessing, echo=FALSE, include=FALSE}
+# devtools::install_github("robinlovelace/pctWales")
+library(pctWales)
 library(stplanr)
 library(tmap)
+library(rgeos)
 data("wales")
 data("od_wales_lines")
 menai = wales[grep("Anglesey|Gwynedd", wales$name),]
 proj4string(od_wales_lines) = proj4string(menai)
 menai_outline = rgeos::gBuffer(menai, width = 0)
 menai_outline = stplanr::buff_geo(menai, width = 1000)
-plot(menai_outline)
-library(rgeos)
+# plot(menai_outline)
 sel = gContains(menai_outline, od_wales_lines, byid = TRUE)
 l = od_wales_lines[rowSums(sel) > 0,]
-plot(l)
-mapview(l)
+# mapview(l)
 
 # subsetting by proximity to the menai bridge
-mgeo = tmap::geocode_OSM("menai bridge")
+# mgeo = tmap::geocode_OSM("menai bridge")
+data("mgeo")
 mpt = SpatialPoints(matrix(mgeo$coords, ncol = 2), CRS(proj4string(wales)))
 menai_15k = buff_geo(mpt, 15000)
-plot(menai_10k)
-plot(l, add = T)
-od_menai = l[rowSums(gContains(menai_10k, l, TRUE)) > 0,]
-plot(od_menai, add = T, col = "red")
-data(od_menai)
+# plot(menai_10k)
+# plot(l, add = T)
+od_menai = l[rowSums(gContains(menai_15k, l, TRUE)) > 0,]
+# plot(od_menai, add = T, col = "red")
+# data(od_menai)
 ```
 
 
 ## Introduction
 
-The input dataset for this report was origin-destination (OD) data from the 2011 Census. These were preprocessed and converted to geographical lines with start and end points corresponding to population weighted middle layer super output areas (MSOAs) using the **stplanr** R package. To highlight the fact that these are geographic entities, we will use the term 'flows' to refer to this data. 'Desire lines' is another commonly used term for these straight lines but we use the term flows here for brevity. The starting point of this report was to subset the relevant flows, in two stages:
+## Input data
+
+The input dataset for this report was origin-destination (OD) data from the 2011 Census. These were preprocessed so that a single line aggregated travel in both directions and converted to geographical lines with start and end points corresponding to population weighted middle layer super output areas (MSOAs) using the **stplanr** R package. To highlight the fact that these are geographic entities, we will use the term 'flows' to refer to this data. 'Desire lines' is another commonly used term for these straight lines but we use the term flows here for brevity. The starting point of this report was to subset the relevant flows, in two stages:
 
 1. Identify all flows with start *and* end points within 10 km buffer of the menai bridge.
 
@@ -52,13 +56,40 @@ These stages are represented in the figure below.
 
 ```{r, echo=FALSE, fig.cap="Flows selected for analysis of cycling potential across the Menai Bridge. Grey lines represend flows that begin and end within 15 km of the Menai Bridge. "}
 l = od_menai[menai_straight,]
+l = onewaygeo(l, attrib = 3:14)
 l$`N. commuters (100s)` = l$`All categories: Method of travel to work` /
                            100
 # osm_tiles = read_osm(bb(menai_15k, ext = 1.2))
+# use_data(osm_tiles)
+data("osm_tiles")
 tm_shape(osm_tiles) + tm_raster() +
   tm_shape(menai_15k) + tm_borders() +
   tm_shape(od_menai) + tm_lines(col = "grey") +
   tm_shape(menai_straight) + tm_lines(col = "red", lwd = 3) +
-  tm_shape(l) + tm_lines(col = "blue", lwd = "N. commuters (100s)")
+  tm_shape(l) + tm_lines(col = "blue", lwd = "All categories: Method of travel to work", scale = 2) +
+  tm_scale_bar()
 ```
+
+It is worth describing briefly this dataset. The total number of commuters who could potentially use the Menai Bridge, according to the subsetting criteria above, by all modes of travel, is `r sum(l[[3]])`. Of these, `r sum(l$Bicycle)` reported using a pedal cycle as their main method of travel to work,
+`r round(100 * sum(l$Bicycle) / sum(l[[3]]), 1)`%.
+
+```{r}
+lc1 = l[l$Bicycle >= 10,]
+lc4 = l[l$Bicycle >= 5,]
+lc3 = l[l$Bicycle >= 5 & l$Bicycle < 10,]
+# lc1$Bicycle / sum(l$Bicycle)
+# sum(lc4$Bicycle) / sum(l$Bicycle)
+# sum(lc3$Bicycle) / sum(l$Bicycle)
+```
+
+
+Of those who report cycling to work in the flows plotted above, 47% (32 commuter cyclists) reported travelling between the single flow connecting the MSOAs of Bangor and Porthaethwy. 23% of reported travelling in one of the 3 flows connecting MSOAs centred in Bangor and Glanadda with MSOAs containing Beaumaris and Llangaffo. These flows (which together constitute 70% of commuter cycling among the subsetted flows) are represented in Figure 2.
+
+```{r, echo=FALSE}
+osm_t4 = read_osm(bb(lc4, ext = 1.2))
+tm_shape(osm_t4) + tm_raster() +
+  tm_shape(lc4) + tm_lines(col = "blue", lwd = "All categories: Method of travel to work", scale = 2) +
+  tm_scale_bar()
+```
+
 
