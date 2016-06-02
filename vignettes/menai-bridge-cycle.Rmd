@@ -1,0 +1,64 @@
+---
+title: "Cycling potential across the menai bridge"
+author: "Robin Lovelace"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+This report explores cycling potential across the Menai Bridge.
+
+```{r preprocessing, eval=FALSE}
+library(stplanr)
+library(tmap)
+data("wales")
+data("od_wales_lines")
+menai = wales[grep("Anglesey|Gwynedd", wales$name),]
+proj4string(od_wales_lines) = proj4string(menai)
+menai_outline = rgeos::gBuffer(menai, width = 0)
+menai_outline = stplanr::buff_geo(menai, width = 1000)
+plot(menai_outline)
+library(rgeos)
+sel = gContains(menai_outline, od_wales_lines, byid = TRUE)
+l = od_wales_lines[rowSums(sel) > 0,]
+plot(l)
+mapview(l)
+
+# subsetting by proximity to the menai bridge
+mgeo = tmap::geocode_OSM("menai bridge")
+mpt = SpatialPoints(matrix(mgeo$coords, ncol = 2), CRS(proj4string(wales)))
+menai_15k = buff_geo(mpt, 15000)
+plot(menai_10k)
+plot(l, add = T)
+od_menai = l[rowSums(gContains(menai_10k, l, TRUE)) > 0,]
+plot(od_menai, add = T, col = "red")
+data(od_menai)
+```
+
+
+## Introduction
+
+The input dataset for this report was origin-destination (OD) data from the 2011 Census. These were preprocessed and converted to geographical lines with start and end points corresponding to population weighted middle layer super output areas (MSOAs) using the **stplanr** R package. To highlight the fact that these are geographic entities, we will use the term 'flows' to refer to this data. 'Desire lines' is another commonly used term for these straight lines but we use the term flows here for brevity. The starting point of this report was to subset the relevant flows, in two stages:
+
+1. Identify all flows with start *and* end points within 10 km buffer of the menai bridge.
+
+2. Identify all flows that cross the Menai Straight, the commuters of which may potentially use the bridge.
+
+These stages are represented in the figure below.
+
+```{r, echo=FALSE, fig.cap="Flows selected for analysis of cycling potential across the Menai Bridge. Grey lines represend flows that begin and end within 15 km of the Menai Bridge. "}
+l = od_menai[menai_straight,]
+l$`N. commuters (100s)` = l$`All categories: Method of travel to work` /
+                           100
+# osm_tiles = read_osm(bb(menai_15k, ext = 1.2))
+tm_shape(osm_tiles) + tm_raster() +
+  tm_shape(menai_15k) + tm_borders() +
+  tm_shape(od_menai) + tm_lines(col = "grey") +
+  tm_shape(menai_straight) + tm_lines(col = "red", lwd = 3) +
+  tm_shape(l) + tm_lines(col = "blue", lwd = "N. commuters (100s)")
+```
+
