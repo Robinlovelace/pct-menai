@@ -10,7 +10,7 @@ vignette: >
 ---
 
 ```{r, echo=FALSE}
-knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 ```
 
 
@@ -116,7 +116,7 @@ save_tmap(m, "current.pdf")
 
 ## Potential cycle commuters
 
-Of the `r sum(l[[3]])` commuters whose desire line crosses the Menai Strait, barely 1% of cycled. Is this simply due to the high average distance and hillines in the region? The graph below shows the trip distance-frequency distribution of the selected flows.
+Of the `r sum(l[[3]])` commuters whose desire line crosses the Menai Strait, barely 1% of cycled. Is this due to the distance and hillines in the region? The graph below shows the trip distance-frequency distribution of the selected flows.
 
 ```{r, echo=FALSE}
 p = line2points(l)
@@ -126,15 +126,13 @@ lw = spTransform(l, CRS("+init=epsg:27700"))
 # plot(gLength(lw, byid = T) / 1000, l$`All categories: Method of travel to work`)
 ```
 
-```{r cycling-potential, echo=FALSE, fig.cap="Level of commuter cycling in the 2011 census (black) and under Government Target (blue) and Go Dutch (red) scenarios. Each point represents a desire line. The diameter of the points is proportional to the number of commuters by all modes for each desire line."}
+```{r cycling-potential, echo=FALSE, fig.cap="Level of commuter cycling in the 2011 census (black) and under Government Target (blue) and Go Dutch (red) scenarios, without including the impact of route gradient. Each point represents a desire line. The diameter of the points is proportional to the number of commuters by all modes for each desire line."}
 # ??logit
 distance = lr$length / 1000
 gradient = lr$av_incline * 100
-logit_pcycle = -3.894 + (-0.5872 * distance) + (1.832 * sqrt(distance) ) + (0.007956 * distance^2) +
-(-0.2872 * gradient) + (0.01784 * distance * gradient) + (-0.09770 * sqrt(distance) * gradient)
-lr$govtarget = boot::inv.logit(logit_pcycle) + l$pcycle
-# plot(distance, lr$govtarget)
 
+logit_pcycle = -3.894 + (-0.5872 * distance) + (1.832 * sqrt(distance) ) + (0.007956 * distance^2)
+lr$govtarget = boot::inv.logit(logit_pcycle) + l$pcycle
 logit_pcycle_dutch = logit_pcycle + 2.499 -0.07384 * distance
 lr$godutch = boot::inv.logit(logit_pcycle_dutch)
 
@@ -145,7 +143,36 @@ ggplot(lr@data) +
              size = l$`All categories: Method of travel to work` / 100) +
   geom_point(aes(distance, l$pcycle * 100), color = "black",
              size = l$`All categories: Method of travel to work` / 100) +
-  xlab("Route distance (km)") + ylab("Proportion cycling to work (%)") 
+  xlab("Route distance (km)") + ylab("Proportion cycling to work (%)") +
+  xlim(c(0,25))
+
+# plot(distance, lr$govtarget)
+```
+
+```{r, echo=FALSE, fig.cap="Level of commuter cycling in the 2011 census (black) and under Government Target (blue) and Go Dutch (red) and Ebike scenarios, with the impact of hilliness included. Each point represents a desire line. The diameter of the points is proportional to the number of commuters by all modes for each desire line."}
+# with hilliness
+logit_pcycle = -3.894 + (-0.5872 * distance) + (1.832 * sqrt(distance) ) + (0.007956 * distance^2) +
+(-0.2872 * gradient) + (0.01784 * distance * gradient) + (-0.09770 * sqrt(distance) * gradient)
+lr$govtarget = boot::inv.logit(logit_pcycle) + l$pcycle
+# plot(distance, lr$govtarget)
+logit_pcycle_dutch = logit_pcycle + 2.499 -0.07384 * distance
+lr$godutch = boot::inv.logit(logit_pcycle_dutch) + l$pcycle
+
+logit_pcycle_ebike = logit_pcycle_dutch + (0.05710 * distance) + (-0.0001087 * distance^2) + (-0.67 * -0.2872 * gradient)
+l$ebike = boot::inv.logit(logit_pcycle_ebike) 
+
+
+ggplot(lr@data) +
+  geom_point(aes(distance, godutch * 100), color = "red",
+             size = l$`All categories: Method of travel to work` / 100) +
+  geom_point(aes(distance, govtarget * 100), color = "blue",
+             size = l$`All categories: Method of travel to work` / 100) +
+  geom_point(aes(distance, l$pcycle * 100), color = "black",
+             size = l$`All categories: Method of travel to work` / 100) +
+  geom_point(aes(distance, l$ebike * 100), color = "green",
+             size = l$`All categories: Method of travel to work` / 100) +
+  xlab("Route distance (km)") + ylab("Proportion cycling to work (%)") +
+  xlim(c(0,25))
 
 # lr$length
   # (0.05710 * ebike * distance) + (-0.0001087 * ebike * distance sq ) + (-0.67 * -0.2872 *
@@ -159,6 +186,7 @@ To allocate these cyclists flows to the transport network, CycleStreets.net was 
 rnet = overline(lr, "Go Dutch")
 # lr = line2route(l)
 # devtools::use_data(lr)
+# lb = line2route(l, plan = "balanced")
 # plot(rnet, lwd = rnet$`Go Dutch` / 100)
 m = tm_shape(osm_t4) + tm_raster() +
   tm_shape(rnet) + tm_lines(col = "red", lwd = "Go Dutch", scale = 8) +
