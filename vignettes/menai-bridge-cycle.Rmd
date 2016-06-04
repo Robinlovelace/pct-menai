@@ -2,7 +2,7 @@
 title: "Cycling potential across the menai bridge"
 author: "Robin Lovelace"
 date: "`r Sys.Date()`"
-output: rmarkdown::word_document
+output: rmarkdown::pdf_document
 vignette: >
   %\VignetteIndexEntry{Cycling potential across the menai bridge}
   %\VignetteEngine{knitr::rmarkdown}
@@ -56,7 +56,7 @@ The input dataset for this report was origin-destination (OD) data from the 2011
 
 1. Identify all flows with start *and* end points within 10 km buffer of the menai bridge.
 
-2. Identify all flows that cross the Menai Straight, the commuters of which may potentially use the bridge.
+2. Identify all flows that cross the Menai Strait, the commuters of which may potentially use the bridge.
 
 These stages are represented in the figure below.
 
@@ -96,7 +96,7 @@ lc3 = l[l$Bicycle >= 5 & l$Bicycle < 10,]
 
 Of those who report cycling to work in the flows plotted above, 47% (32 commuter cyclists) reported travelling between the single flow connecting the MSOAs of Bangor and Porthaethwy. 23% of reported travelling in one of the 3 flows connecting MSOAs centred in Bangor and Glanadda with MSOAs containing Beaumaris and Llangaffo. These flows (which together constitute 70% of commuter cycling among the subsetted flows) are represented in Figure 2.
 
-```{r, echo=FALSE, fig.cap="Desire lines crossing the Menai Straight frequented by 5 or more cyclists in the 2011 census (blue) and all desire lines crossing the straight (green). Widths in both cases are proportional to the number of commutes by all modes."}
+```{r, echo=FALSE, fig.cap="Desire lines crossing the Menai Strait frequented by 5 or more cyclists in the 2011 census (blue) and all desire lines crossing the straight (green). Widths in both cases are proportional to the number of commutes by all modes."}
 menai_5k = buff_geo(mpt, width = 5000)
 l5 = l[menai_5k,]
 l5$`N. Commuters (within 5 km)` = l5$`All categories: Method of travel to work`
@@ -116,7 +116,7 @@ save_tmap(m, "current.pdf")
 
 ## Potential cycle commuters
 
-Of the `r sum(l[[3]])` commuters whose desire line crosses the Menai Straight, barely 1% of cycled. Is this simply due to the high average distance and hillines in the region? The graph below shows the trip distance-frequency distribution of the selected flows.
+Of the `r sum(l[[3]])` commuters whose desire line crosses the Menai Strait, barely 1% of cycled. Is this simply due to the high average distance and hillines in the region? The graph below shows the trip distance-frequency distribution of the selected flows.
 
 ```{r, echo=FALSE}
 p = line2points(l)
@@ -129,7 +129,7 @@ lw = spTransform(l, CRS("+init=epsg:27700"))
 ```{r cycling-potential, echo=FALSE, fig.cap="Level of commuter cycling in the 2011 census (black) and under Government Target (blue) and Go Dutch (red) scenarios. Each point represents a desire line. The diameter of the points is proportional to the number of commuters by all modes for each desire line."}
 # ??logit
 distance = lr$length / 1000
-gradient = lr$av_incline
+gradient = lr$av_incline * 100
 logit_pcycle = -3.894 + (-0.5872 * distance) + (1.832 * sqrt(distance) ) + (0.007956 * distance^2) +
 (-0.2872 * gradient) + (0.01784 * distance * gradient) + (-0.09770 * sqrt(distance) * gradient)
 lr$govtarget = boot::inv.logit(logit_pcycle) + l$pcycle
