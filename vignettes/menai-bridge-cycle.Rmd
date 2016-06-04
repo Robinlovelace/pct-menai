@@ -2,12 +2,17 @@
 title: "Cycling potential across the menai bridge"
 author: "Robin Lovelace"
 date: "`r Sys.Date()`"
-output: rmarkdown::pdf_document
+output: rmarkdown::word_document
 vignette: >
   %\VignetteIndexEntry{Cycling potential across the menai bridge}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
 
 
 This report explores cycling potential across the Menai Bridge.
@@ -18,6 +23,7 @@ library(pctWales)
 library(stplanr)
 library(tmap)
 library(rgeos)
+library(ggplot2)
 data("wales")
 data("od_wales_lines")
 menai = wales[grep("Anglesey|Gwynedd", wales$name),]
@@ -31,7 +37,7 @@ l = od_wales_lines[rowSums(sel) > 0,]
 
 # subsetting by proximity to the menai bridge
 # mgeo = tmap::geocode_OSM("menai bridge")
-data("mgeo")
+# data("mgeo")
 mpt = SpatialPoints(matrix(mgeo$coords, ncol = 2), CRS(proj4string(wales)))
 menai_15k = buff_geo(mpt, 15000)
 # plot(menai_10k)
@@ -54,28 +60,32 @@ The input dataset for this report was origin-destination (OD) data from the 2011
 
 These stages are represented in the figure below.
 
-```{r, echo=FALSE, fig.cap="Flows selected for analysis of cycling potential across the Menai Bridge. Grey lines represend flows that begin and end within 15 km of the Menai Bridge. ", warning=FALSE}
+```{r selection, echo=FALSE, fig.cap="Flows selected for analysis of cycling potential across the Menai Bridge. Grey lines represend flows that begin and end within 15 km of the Menai Bridge. ", warning=FALSE}
 l = od_menai[menai_straight,]
 l = onewaygeo(l, attrib = 3:14)
 l$`N. commuters (100s)` = l$`All categories: Method of travel to work` /
                            100
+l$pcycle = l$Bicycle /  l$`All categories: Method of travel to work`
 # osm_tiles = read_osm(bb(menai_15k, ext = 1.2))
 # use_data(osm_tiles)
 data("osm_tiles")
-tm_shape(osm_tiles) + tm_raster() +
+m = tm_shape(osm_tiles) + tm_raster() +
   tm_shape(menai_15k) + tm_borders() +
   tm_shape(od_menai) + tm_lines(col = "grey") +
   tm_shape(menai_straight) + tm_lines(col = "red", lwd = 3) +
   tm_shape(l) + tm_lines(col = "blue", lwd = "All categories: Method of travel to work", scale = 2) +
   tm_scale_bar()
+m
+save_tmap(m, "selection.pdf")
 ```
 
 It is worth describing briefly this dataset. `r nrow(l)` flows were selected by the criteria above. The total number of commuters travelling to work along these flows by all modes, who could potentially use the Menai Bridge, was `r sum(l[[3]])`. Of these, `r sum(l$Bicycle)` reported using a pedal cycle as their main method of travel to work,
 `r round(100 * sum(l$Bicycle) / sum(l[[3]]), 1)`%.
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, echo=FALSE}
 lc1 = l[l$Bicycle >= 10,]
-lc4 = l[l$Bicycle >= 5,]
+sel = l$Bicycle >= 5
+lc4 = l[sel,]
 lc3 = l[l$Bicycle >= 5 & l$Bicycle < 10,]
 # lc1$Bicycle / sum(l$Bicycle)
 # sum(lc4$Bicycle) / sum(l$Bicycle)
@@ -86,22 +96,73 @@ lc3 = l[l$Bicycle >= 5 & l$Bicycle < 10,]
 
 Of those who report cycling to work in the flows plotted above, 47% (32 commuter cyclists) reported travelling between the single flow connecting the MSOAs of Bangor and Porthaethwy. 23% of reported travelling in one of the 3 flows connecting MSOAs centred in Bangor and Glanadda with MSOAs containing Beaumaris and Llangaffo. These flows (which together constitute 70% of commuter cycling among the subsetted flows) are represented in Figure 2.
 
-```{r, echo=FALSE}
-osm_t4 = read_osm(bb(lc4, ext = 1.2))
-tm_shape(osm_t4) + tm_raster() +
-  tm_shape(lc4) + tm_lines(col = "blue", lwd = "All categories: Method of travel to work", scale = 2) +
+```{r, echo=FALSE, fig.cap="Desire lines crossing the Menai Straight frequented by 5 or more cyclists in the 2011 census (blue) and all desire lines crossing the straight (green). Widths in both cases are proportional to the number of commutes by all modes."}
+menai_5k = buff_geo(mpt, width = 5000)
+l5 = l[menai_5k,]
+l5$`N. Commuters (within 5 km)` = l5$`All categories: Method of travel to work`
+lc4$`N. Commuters (more than 5 commuter cyclists)` = lc4$`All categories: Method of travel to work`
+lc4$text = paste0(lc4$`All categories: Method of travel to work`, ", ", lc4$Bicycle, " cycle")
+# osm_t4 = read_osm(bb(lc4, ext = 1.6))
+# devtools::use_data(osm_t4)
+m = tm_shape(osm_t4) + tm_raster() +
+  tm_shape(l5) + tm_lines(col = "darkgreen", lwd = "N. Commuters (within 5 km)", scale = 2) +
+  tm_shape(lc4) + tm_lines(col = "blue", lwd = "N. Commuters (more than 5 commuter cyclists)", scale = 4) +
+  tm_shape(SpatialPointsDataFrame(coords = gCentroid(lc4, byid = T), data = lc4@data)) +
+  tm_text(text = "text") +
   tm_scale_bar()
+m
+save_tmap(m, "current.pdf")
 ```
 
 ## Potential cycle commuters
 
 Of the `r sum(l[[3]])` commuters whose desire line crosses the Menai Straight, barely 1% of cycled. Is this simply due to the high average distance and hillines in the region? The graph below shows the trip distance-frequency distribution of the selected flows.
 
-```{r}
+```{r, echo=FALSE}
 p = line2points(l)
 p1 = p[seq(1, length.out = nrow(l), by = 2),]
 p2 = p[seq(2, length.out = nrow(l), by = 2),]
 lw = spTransform(l, CRS("+init=epsg:27700"))
-plot(gLength(lw, byid = T) / 1000, l$`All categories: Method of travel to work`)
+# plot(gLength(lw, byid = T) / 1000, l$`All categories: Method of travel to work`)
 ```
 
+```{r cycling-potential, echo=FALSE, fig.cap="Level of commuter cycling in the 2011 census (black) and under Government Target (blue) and Go Dutch (red) scenarios. Each point represents a desire line. The diameter of the points is proportional to the number of commuters by all modes for each desire line."}
+# ??logit
+distance = lr$length / 1000
+gradient = lr$av_incline
+logit_pcycle = -3.894 + (-0.5872 * distance) + (1.832 * sqrt(distance) ) + (0.007956 * distance^2) +
+(-0.2872 * gradient) + (0.01784 * distance * gradient) + (-0.09770 * sqrt(distance) * gradient)
+lr$govtarget = boot::inv.logit(logit_pcycle) + l$pcycle
+# plot(distance, lr$govtarget)
+
+logit_pcycle_dutch = logit_pcycle + 2.499 -0.07384 * distance
+lr$godutch = boot::inv.logit(logit_pcycle_dutch)
+
+ggplot(lr@data) +
+  geom_point(aes(distance, godutch * 100), color = "red",
+             size = l$`All categories: Method of travel to work` / 100) +
+  geom_point(aes(distance, govtarget * 100), color = "blue",
+             size = l$`All categories: Method of travel to work` / 100) +
+  geom_point(aes(distance, l$pcycle * 100), color = "black",
+             size = l$`All categories: Method of travel to work` / 100) +
+  xlab("Route distance (km)") + ylab("Proportion cycling to work (%)") 
+
+# lr$length
+  # (0.05710 * ebike * distance) + (-0.0001087 * ebike * distance sq ) + (-0.67 * -0.2872 *
+# ebike * gradient).
+lr$`Go Dutch` = lr$godutch * l$`All categories: Method of travel to work`
+```
+
+To allocate these cyclists flows to the transport network, CycleStreets.net was used to find routes converting the straight lines in the 'fastest route'. These are illustrated in the map below.
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Cycle commutes allocated to the road network under the Go Dutch scenario."}
+rnet = overline(lr, "Go Dutch")
+# lr = line2route(l)
+# devtools::use_data(lr)
+# plot(rnet, lwd = rnet$`Go Dutch` / 100)
+m = tm_shape(osm_t4) + tm_raster() +
+  tm_shape(rnet) + tm_lines(col = "red", lwd = "Go Dutch", scale = 8) +
+  tm_scale_bar()
+m
+save_tmap(m, "rnet-dutch.pdf")
+```

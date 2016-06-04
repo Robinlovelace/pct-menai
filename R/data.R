@@ -13,10 +13,12 @@
 #' library(sp)
 #' plot(ukmsoas)
 #' welsh_msoas = ukmsoas[grep("W", ukmsoas$geo_code),]
+#' proj4string(welsh_msoas)
 #' od_wales = od_wales[od_wales$`Area of residence` %in% welsh_msoas$geo_code,]
 #' od_wales = od_wales[od_wales$`Area of workplace` %in% welsh_msoas$geo_code,]
 #' plot(welsh_msoas)
-#' od_wales_lines = stplanr::od2line(od_wales, welsh_msoas)
+#' system.time({od_wales_lines = stplanr::od2line(od_wales, welsh_msoas)})
+#' system.time({od_wales_lines = od2line2(od_wales, welsh_msoas)})
 #' names(od_wales_lines)
 #' class(od_wales)
 #' use_data(od_wales_lines)
@@ -27,3 +29,16 @@
 #' @name od_wales
 #' @usage data(od_wales)
 NULL
+
+# devtools::install_github("AndySouth/rnaturalearth")
+# library(rnaturalearth)
+# uk = ne_states(country = 'united kingdom')
+# library(mapview)
+# wales = uk[grep("Wales", uk$geonunit),]
+# mapview(wales)
+# plot(wales)
+# use_data(wales)
+# 
+# menai_straight = geojsonio::geojson_read("/tmp/mstraight.geojson", what = "sp")
+# mapview(menai_straight)
+# use_data(menai_straight)
