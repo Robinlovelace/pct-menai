@@ -54,7 +54,7 @@ The input dataset for this report was origin-destination (OD) data from the 2011
 
 These stages are represented in the figure below.
 
-```{r, echo=FALSE, fig.cap="Flows selected for analysis of cycling potential across the Menai Bridge. Grey lines represend flows that begin and end within 15 km of the Menai Bridge. "}
+```{r, echo=FALSE, fig.cap="Flows selected for analysis of cycling potential across the Menai Bridge. Grey lines represend flows that begin and end within 15 km of the Menai Bridge. ", warning=FALSE}
 l = od_menai[menai_straight,]
 l = onewaygeo(l, attrib = 3:14)
 l$`N. commuters (100s)` = l$`All categories: Method of travel to work` /
@@ -70,10 +70,10 @@ tm_shape(osm_tiles) + tm_raster() +
   tm_scale_bar()
 ```
 
-It is worth describing briefly this dataset. The total number of commuters who could potentially use the Menai Bridge, according to the subsetting criteria above, by all modes of travel, is `r sum(l[[3]])`. Of these, `r sum(l$Bicycle)` reported using a pedal cycle as their main method of travel to work,
+It is worth describing briefly this dataset. `r nrow(l)` flows were selected by the criteria above. The total number of commuters travelling to work along these flows by all modes, who could potentially use the Menai Bridge, was `r sum(l[[3]])`. Of these, `r sum(l$Bicycle)` reported using a pedal cycle as their main method of travel to work,
 `r round(100 * sum(l$Bicycle) / sum(l[[3]]), 1)`%.
 
-```{r}
+```{r, warning=FALSE}
 lc1 = l[l$Bicycle >= 10,]
 lc4 = l[l$Bicycle >= 5,]
 lc3 = l[l$Bicycle >= 5 & l$Bicycle < 10,]
@@ -82,6 +82,7 @@ lc3 = l[l$Bicycle >= 5 & l$Bicycle < 10,]
 # sum(lc3$Bicycle) / sum(l$Bicycle)
 ```
 
+## Commuter cyclists in the 2011 Census
 
 Of those who report cycling to work in the flows plotted above, 47% (32 commuter cyclists) reported travelling between the single flow connecting the MSOAs of Bangor and Porthaethwy. 23% of reported travelling in one of the 3 flows connecting MSOAs centred in Bangor and Glanadda with MSOAs containing Beaumaris and Llangaffo. These flows (which together constitute 70% of commuter cycling among the subsetted flows) are represented in Figure 2.
 
@@ -92,4 +93,15 @@ tm_shape(osm_t4) + tm_raster() +
   tm_scale_bar()
 ```
 
+## Potential cycle commuters
+
+Of the `r sum(l[[3]])` commuters whose desire line crosses the Menai Straight, barely 1% of cycled. Is this simply due to the high average distance and hillines in the region? The graph below shows the trip distance-frequency distribution of the selected flows.
+
+```{r}
+p = line2points(l)
+p1 = p[seq(1, length.out = nrow(l), by = 2),]
+p2 = p[seq(2, length.out = nrow(l), by = 2),]
+lw = spTransform(l, CRS("+init=epsg:27700"))
+plot(gLength(lw, byid = T) / 1000, l$`All categories: Method of travel to work`)
+```
 
