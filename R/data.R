@@ -13,6 +13,7 @@
 #' library(sp)
 #' plot(ukmsoas)
 #' welsh_msoas = ukmsoas[grep("W", ukmsoas$geo_code),]
+#' devtools::use_data(welsh_msoas)
 #' proj4string(welsh_msoas)
 #' od_wales = od_wales[od_wales$`Area of residence` %in% welsh_msoas$geo_code,]
 #' od_wales = od_wales[od_wales$`Area of workplace` %in% welsh_msoas$geo_code,]

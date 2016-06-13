@@ -1,21 +1,24 @@
 ---
-title: "Cycling potential across the menai bridge"
-author: "Robin Lovelace"
+title: "Cycling potential across the Menai Bridge"
+author: "Robin Lovelace on behalf of Beicio Bangor"
 date: "`r Sys.Date()`"
 output: rmarkdown::pdf_document
 vignette: >
   %\VignetteIndexEntry{Cycling potential across the menai bridge}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+bibliography: cycling-potential.bib
 ---
 
 ```{r, echo=FALSE}
 knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 ```
 
+This report explores cycling potential across the Menai Bridge, using the 'propensity to cycle tool' (PCT) method [@lovelace_propensity_2016]. The PCT is freely available for England thanks to a Department for Transport project at [www.pct.bike](http://pct.bike/) but has yet to be created for Wales.
 
+To ensure reproducibility, and encourage the use of the methods for other areas, the code and data needed to reproduce this analysis have been made available [online, at github.com/Robinlovelace/pct-menai ](https://github.com/Robinlovelace/pct-menai/blob/master/vignettes/menai-bridge-cycle.Rmd). The remainder of this report discusses the input data, the current distribution of cycling in the study area, commuter cycling potential and cyclable commutes originating in Anglesey, which would have the greatest congestion benefits. Overall it was found that Menai Bridge has substantial commuter cycling potential. Trips for education, shopping and socialising are likely to have greater cycling potential due to economic and cultural exchange between the settlements of Menai Bridge and Llanfairpwllgwyngyll on Anglesey with Bangor and its surroundings on the mainland.
 
-This report explores cycling potential across the Menai Bridge.
+## Data
 
 ```{r preprocessing, echo=FALSE, include=FALSE}
 # devtools::install_github("robinlovelace/pctWales")
@@ -25,8 +28,10 @@ library(tmap)
 library(rgeos)
 library(ggplot2)
 data("wales")
+data("od_wales")
 data("od_wales_lines")
 menai = wales[grep("Anglesey|Gwynedd", wales$name),]
+angle = wales[grep("Anglesey", wales$name),]
 proj4string(od_wales_lines) = proj4string(menai)
 menai_outline = rgeos::gBuffer(menai, width = 0)
 menai_outline = stplanr::buff_geo(menai, width = 1000)
@@ -39,30 +44,27 @@ l = od_wales_lines[rowSums(sel) > 0,]
 # mgeo = tmap::geocode_OSM("menai bridge")
 # data("mgeo")
 mpt = SpatialPoints(matrix(mgeo$coords, ncol = 2), CRS(proj4string(wales)))
+menai_5k = buff_geo(mpt, 5000)
 menai_15k = buff_geo(mpt, 15000)
 # plot(menai_10k)
 # plot(l, add = T)
+cents_5km = 
 od_menai = l[rowSums(gContains(menai_15k, l, TRUE)) > 0,]
 # plot(od_menai, add = T, col = "red")
 # data(od_menai)
 ```
 
-
-## Introduction
-
-## Input data
-
 The input dataset for this report was origin-destination (OD) data from the 2011 Census. These were preprocessed so that a single line aggregated travel in both directions and converted to geographical lines with start and end points corresponding to population weighted middle layer super output areas (MSOAs) using the **stplanr** R package. To highlight the fact that these are geographic entities, we will use the term 'flows' to refer to this data. 'Desire lines' is another commonly used term for these straight lines but we use the term flows here for brevity. The starting point of this report was to subset the relevant flows, in two stages:
 
-1. Identify all flows with start *and* end points within 10 km buffer of the menai bridge.
+1. Identify all flows with start *and* end points within a 15 km buffer of the Menai bridge.
 
 2. Identify all flows that cross the Menai Strait, the commuters of which may potentially use the bridge.
 
 These stages are represented in the figure below.
 
-```{r selection, echo=FALSE, fig.cap="Flows selected for analysis of cycling potential across the Menai Bridge. Grey lines represend flows that begin and end within 15 km of the Menai Bridge. ", warning=FALSE}
-l = od_menai[menai_straight,]
-l = onewaygeo(l, attrib = 3:14)
+```{r selection, echo=FALSE, fig.cap="Flows selected for analysis of cycling potential across the Menai Bridge. Grey lines represent flows that begin and end within 15 km of the Menai Bridge. ", warning=FALSE}
+l_twoways = od_menai[menai_straight,]
+l = onewaygeo(l_twoways, attrib = 3:14)
 l$`N. commuters (100s)` = l$`All categories: Method of travel to work` /
                            100
 l$pcycle = l$Bicycle /  l$`All categories: Method of travel to work`
@@ -92,7 +94,9 @@ lc3 = l[l$Bicycle >= 5 & l$Bicycle < 10,]
 # sum(lc3$Bicycle) / sum(l$Bicycle)
 ```
 
-## Commuter cyclists in the 2011 Census
+\newpage
+
+## Current levels of cycle commuting across the Menai Strait
 
 Of those who report cycling to work in the flows plotted above, 47% (32 commuter cyclists) reported travelling between the single flow connecting the MSOAs of Bangor and Porthaethwy. 23% of reported travelling in one of the 3 flows connecting MSOAs centred in Bangor and Glanadda with MSOAs containing Beaumaris and Llangaffo. These flows (which together constitute 70% of commuter cycling among the subsetted flows) are represented in Figure 2.
 
@@ -114,9 +118,13 @@ m
 save_tmap(m, "current.pdf")
 ```
 
+\newpage
+
 ## Potential cycle commuters
 
-Of the `r sum(l[[3]])` commuters whose desire line crosses the Menai Strait, barely 1% of cycled. Is this due to the distance and hillines in the region? The graph below shows the trip distance-frequency distribution of the selected flows.
+Of the `r sum(l[[3]])` commuters whose desire line crosses the Menai Strait, barely 1% of cycled. Is this due to the distance of average commuter trips and hills in the region? Or does the infrastructure play a role? The graph below shows the trip distance-frequency distribution of the selected flows. This shows that there are 2 large flows under 5 km in distance and a number of flows between 10 and 15 km. Note that the numbers presented do not account for within-zone flows (people who live and work in the same zone) and people who have no fixed workplace.
+
+<!-- , which accounted for  -->
 
 ```{r, echo=FALSE}
 p = line2points(l)
@@ -126,7 +134,7 @@ lw = spTransform(l, CRS("+init=epsg:27700"))
 # plot(gLength(lw, byid = T) / 1000, l$`All categories: Method of travel to work`)
 ```
 
-```{r cycling-potential, echo=FALSE, fig.cap="Level of commuter cycling in the 2011 census (black) and under Government Target (blue) and Go Dutch (red) scenarios, without including the impact of route gradient. Each point represents a desire line. The diameter of the points is proportional to the number of commuters by all modes for each desire line."}
+```{r cycling-potential, echo=FALSE, fig.cap="Level of commuter cycling in the 2011 census (black) and under Government Target (blue) and Go Dutch (red) scenarios, omitting the impact of route gradient. Each point represents a desire line. The diameter of the points is proportional to the number of commuters by all modes for each desire line."}
 # ??logit
 distance = lr$length / 1000
 gradient = lr$av_incline * 100
@@ -135,6 +143,8 @@ logit_pcycle = -3.894 + (-0.5872 * distance) + (1.832 * sqrt(distance) ) + (0.00
 lr$govtarget = boot::inv.logit(logit_pcycle) + l$pcycle
 logit_pcycle_dutch = logit_pcycle + 2.499 -0.07384 * distance
 lr$godutch = boot::inv.logit(logit_pcycle_dutch)
+lr$`Go Dutch` = lr$godutch * l$`All categories: Method of travel to work`
+lr_nograd = lr
 
 ggplot(lr@data) +
   geom_point(aes(distance, godutch * 100), color = "red",
@@ -180,9 +190,31 @@ ggplot(lr@data) +
 lr$`Go Dutch` = lr$godutch * l$`All categories: Method of travel to work`
 ```
 
-To allocate these cyclists flows to the transport network, CycleStreets.net was used to find routes converting the straight lines in the 'fastest route'. These are illustrated in the map below.
+It is clear that the model, which was trained against English data, has a strong aversion to hills. Note that part of this aversion could be due to the fact that hilly places generally have a low level of cycling. For this reason results with and without hilliness included are presented.
 
-```{r, echo=FALSE, message=FALSE, fig.cap="Cycle commutes allocated to the road network under the Go Dutch scenario."}
+To allocate these flows to the transport network, CycleStreets.net was used to find routes converting the straight lines in the 'fastest route' and the R package **stplanr** was used to aggregate overlapping routes. These are illustrated in the map below.
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Cycle commutes allocated to the road network under the Go Dutch scenario, accounting for gradient."}
+rnet = overline(lr_nograd, "Go Dutch")
+# lr = line2route(l)
+# devtools::use_data(lr)
+# lb = line2route(l, plan = "balanced")
+# plot(rnet, lwd = rnet$`Go Dutch` / 100)
+# tmap_mode("view")
+m = tm_shape(osm_t4) + tm_raster() +
+  tm_shape(rnet) + tm_lines(col = "red", lwd = "Go Dutch", scale = 8) +
+  tm_scale_bar()
+m
+# save_tmap(m, "rnet-dutch-nograd.pdf")
+# save_tmap(m, "vignettes/rnet-dutch-nograd.png")
+```
+
+<!-- ```{r, echo=FALSE, message=FALSE, fig.cap="Cycle commutes allocated to the road network under the Go Dutch scenario, accounting for gradient."} -->
+<!-- knitr::include_graphics("rnet-dutch-nograd.pdf") -->
+<!-- ``` -->
+
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Cycle commutes allocated to the road network under the Go Dutch scenario, accounting for the impact of gradient in the English model."}
 rnet = overline(lr, "Go Dutch")
 # lr = line2route(l)
 # devtools::use_data(lr)
@@ -194,3 +226,115 @@ m = tm_shape(osm_t4) + tm_raster() +
 m
 save_tmap(m, "rnet-dutch.pdf")
 ```
+
+\newpage
+
+## Flows originating in Anglesey
+
+The rush hour traffic is worse on the mainland-bound routes over the Menai Strait. Thus cycling uptake among people travelling in this direction in the morning could be particularly beneficial. This is illustrated in the maps below, which show substantial potential for cycling update along these congested routes.
+
+```{r, include=FALSE}
+# plot(angle)
+proj4string(angle) = proj4string(welsh_msoas)
+angle_msoas = welsh_msoas[angle,]
+# plot(angle_msoas)
+# plot(l_twoways, add = T)
+l_from_angle = l_twoways[l_twoways$`Area of residence` %in% angle_msoas$geo_code,]
+# plot(l_from_angle, add = T, col = "red")
+# nrow(l_from_angle)
+# summary(l_from_angle$`All categories: Method of travel to work`)
+# mapview::mapview(l_from_angle)
+# summary(l_from_angle)
+lfa = l_from_angle[l_from_angle$`All categories: Method of travel to work` > 50,]
+# nrow(lfa)
+# summary(lfa)
+# rfa = line2route(lfa)
+# devtools::use_data(rfa)
+rfa@data = cbind(rfa@data, lfa@data)
+rfa$Distance = rfa$length / 1000
+rfa$pcycle = rfa$Bicycle / rfa$`All categories: Method of travel to work`
+rfa_sub = rfa[rfa$Distance < 15,]
+# nrow(rfa_sub)
+# mapview::mapview(rfa_sub)
+```
+
+```{r uptake-rfa, echo=FALSE}
+distance = rfa_sub$length / 1000
+gradient = rfa_sub$av_incline * 100
+
+logit_pcycle = -3.894 + (-0.5872 * distance) + (1.832 * sqrt(distance) ) + (0.007956 * distance^2)
+rfa_sub$govtarget = boot::inv.logit(logit_pcycle) + rfa_sub$pcycle
+logit_pcycle_dutch = logit_pcycle + 2.499 -0.07384 * distance
+rfa_sub$godutch = boot::inv.logit(logit_pcycle_dutch)
+rfa_sub$`Go Dutch` = rfa_sub$godutch * rfa_sub$`All categories: Method of travel to work`
+rfa_sub_nograd = rfa_sub
+```
+
+```{r, echo=FALSE}
+# with hilliness
+logit_pcycle = -3.894 + (-0.5872 * distance) + (1.832 * sqrt(distance) ) + (0.007956 * distance^2) +
+(-0.2872 * gradient) + (0.01784 * distance * gradient) + (-0.09770 * sqrt(distance) * gradient)
+rfa_sub$govtarget = boot::inv.logit(logit_pcycle) + rfa_sub$pcycle
+# plot(distance, rfa_sub$govtarget)
+logit_pcycle_dutch = logit_pcycle + 2.499 -0.07384 * distance
+rfa_sub$godutch = boot::inv.logit(logit_pcycle_dutch) + rfa_sub$pcycle
+
+logit_pcycle_ebike = logit_pcycle_dutch + (0.05710 * distance) + (-0.0001087 * distance^2) + (-0.67 * -0.2872 * gradient)
+rfa_sub$ebike = boot::inv.logit(logit_pcycle_ebike) 
+
+rfa_sub$`Go Dutch` = rfa_sub$godutch * rfa_sub$`All categories: Method of travel to work`
+```
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Cycle commutes from Anglesey under the Go Dutch scenario, not accounting for gradient."}
+rnet = overline(rfa_sub_nograd, "Go Dutch")
+# rfa_sub = line2route(l)
+# devtools::use_data(rfa_sub)
+# lb = line2route(l, plan = "balanced")
+# plot(rnet, lwd = rnet$`Go Dutch` / 100)
+m = tm_shape(osm_t4) + tm_raster() +
+  tm_shape(rnet) + tm_lines(col = "red", lwd = "Go Dutch", scale = 8) +
+  tm_scale_bar()
+m
+# save_tmap(m, "rnet-dutch-nograd.pdf")
+# save_tmap(m, "vignettes/rnet-dutch-nograd.png")
+```
+
+<!-- ```{r, echo=FALSE, message=FALSE, fig.cap="Cycle commutes allocated to the road network under the Go Dutch scenario, accounting for gradient."} -->
+<!-- knitr::include_graphics("rnet-dutch-nograd.pdf") -->
+<!-- ``` -->
+
+
+```{r, echo=FALSE, message=FALSE, fig.cap="Cycle commutes from Anglesey under the Go Dutch scenario, accounting for the impact of gradient in the English model."}
+rnet = overline(rfa_sub, "Go Dutch")
+# rfa_sub = line2route(l)
+# devtools::use_data(rfa_sub)
+# lb = line2route(l, plan = "balanced")
+# plot(rnet, lwd = rnet$`Go Dutch` / 100)
+m = tm_shape(osm_t4) + tm_raster() +
+  tm_shape(rnet) + tm_lines(col = "red", lwd = "Go Dutch", scale = 8) +
+  tm_scale_bar()
+m
+save_tmap(m, "rnet-dutch.pdf")
+```
+
+\newpage
+
+## Discussion
+
+```{r, eval=FALSE, echo=FALSE}
+nrow(l)
+nrow(lr)
+l$Distance = lr$length / 1000
+sum(l$`All categories: Method of travel to work`)
+sel = l$Distance < 15
+sum(l$`All categories: Method of travel to work`[sel])
+```
+
+The analysis presented in this report does not tell the full storey of cycling potential over the Menai Strait. True cycling numbers could be boosted substantially by trips for education, leisure and shopping, that are not represented in Census travel to work data. However, the analysis has shown that many (5757) people crossed the passage for work each day in 2011 with start and end points within 15 km of the Menai Bridge.
+Of these, over half (3070) have an inferred trip distance of less than 15 km (9 miles). If only a small portion of these trips were replaced by cycling, as the model suggests is feasible, the benefits for congestion and health could be great.
+
+Further work could involve the analysis of the potential impacts of electric cycles, which could further boost the uptake of cycling, and higher geographical resolution of OD data.
+
+
+## References
+
