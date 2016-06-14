@@ -1,10 +1,10 @@
 ---
-title: "Cycling potential across the Menai Bridge"
+title: "Cycling potential across the Menai Strait"
 author: "Robin Lovelace on behalf of Beicio Bangor"
 date: "`r Sys.Date()`"
-output: rmarkdown::pdf_document
+output: rmarkdown::word_document
 vignette: >
-  %\VignetteIndexEntry{Cycling potential across the menai bridge}
+  %\VignetteIndexEntry{Cycling potential across the menai Strait}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 bibliography: cycling-potential.bib
@@ -14,9 +14,9 @@ bibliography: cycling-potential.bib
 knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 ```
 
-This report explores cycling potential across the Menai Bridge, using the 'propensity to cycle tool' (PCT) method [@lovelace_propensity_2016]. The PCT is freely available for England thanks to a Department for Transport project at [www.pct.bike](http://pct.bike/) but has yet to be created for Wales.
+This report explores cycling potential across the Menai Strait, using the 'propensity to cycle tool' (PCT) method [@lovelace_propensity_2016]. The PCT is freely available for England thanks to a Department for Transport project at [www.pct.bike](http://pct.bike/) but has yet to be created for Wales.
 
-To ensure reproducibility, and encourage the use of the methods for other areas, the code and data needed to reproduce this analysis have been made available [online, at github.com/Robinlovelace/pct-menai ](https://github.com/Robinlovelace/pct-menai/blob/master/vignettes/menai-bridge-cycle.Rmd). The remainder of this report discusses the input data, the current distribution of cycling in the study area, commuter cycling potential and cyclable commutes originating in Anglesey, which would have the greatest congestion benefits. Overall it was found that Menai Bridge has substantial commuter cycling potential. Trips for education, shopping and socialising are likely to have greater cycling potential due to economic and cultural exchange between the settlements of Menai Bridge and Llanfairpwllgwyngyll on Anglesey with Bangor and its surroundings on the mainland.
+To ensure reproducibility, and encourage the use of the methods for other areas, the code and data needed to reproduce this analysis have been made available [online, at github.com/Robinlovelace/pct-menai ](https://github.com/Robinlovelace/pct-menai/blob/master/vignettes/menai-bridge-cycle.Rmd). The remainder of this report discusses the input data, the current distribution of cycling in the study area, commuter cycling potential and cyclable commutes originating in Anglesey, which would have the greatest congestion benefits. Overall it was found that bridges crossing the Menai Strait have substantial commuter cycling potential. Trips for education, shopping and socialising are likely to have greater cycling potential due to economic and cultural exchange between the settlements of Porthaethwy and Llanfairpwllgwyngyll on Anglesey with Bangor and its surroundings on the mainland.
 
 ## Data
 
@@ -54,7 +54,39 @@ od_menai = l[rowSums(gContains(menai_15k, l, TRUE)) > 0,]
 # data(od_menai)
 ```
 
-The input dataset for this report was origin-destination (OD) data from the 2011 Census. These were preprocessed so that a single line aggregated travel in both directions and converted to geographical lines with start and end points corresponding to population weighted middle layer super output areas (MSOAs) using the **stplanr** R package. To highlight the fact that these are geographic entities, we will use the term 'flows' to refer to this data. 'Desire lines' is another commonly used term for these straight lines but we use the term flows here for brevity. The starting point of this report was to subset the relevant flows, in two stages:
+```{r, echo=FALSE}
+l_twoways = od_menai[menai_straight,]
+# ltf = line2route(l_twoways)
+# devtools::use_data(ltf)
+df = l_twoways@data
+df$Distance = ltf$length / 1000
+dbands = c(0, 5, 10, 15, 20, 40)
+df$`Distance band` = cut(df$Distance, dbands)
+library(dplyr)
+dfdb =
+  group_by(df, `Distance band`) %>% 
+  summarise(All = sum(`All categories: Method of travel to work`),
+            Cycle = sum(`Bicycle`),
+            Drive = sum(`Driving a car or van`),
+            Passenger = sum(`Passenger in a car or van`),
+            Walk = sum(`On foot`)
+              )
+dfdb$Other = dfdb$All - rowSums(dfdb[3:ncol(dfdb)])
+dfdb$`Distance band` = as.character(dfdb$`Distance band`)
+dfdb = rbind(dfdb, c("All", colSums(dfdb[2:7])))
+```
+
+
+The input dataset for this report was origin-destination (OD) data from the 2011 Census. The number of people travelling by mode, cross tabulated by distance bands, is illustrated in Table 1.
+
+```{r, echo=FALSE}
+knitr::kable(dfdb, caption = "Numbers of people travelling by mode and route distance bands")
+```
+
+
+For the aggregate analysis, the OD dataset was preprocessed so that a single line represents travel in both directions (for the one way analysis one way flows were used). The dataset was converted to geographical lines with start and end points corresponding to population weighted middle layer super output areas (MSOAs). This work, and estimation of route distance, was calculated using the **stplanr** R package.
+
+To highlight the fact that these are geographic entities, we will use the term 'flows' to refer to this data. 'Desire lines' is another commonly used term for these straight lines but we use the term flows here for brevity. The starting point of this report was to subset the relevant flows, in two stages:
 
 1. Identify all flows with start *and* end points within a 15 km buffer of the Menai bridge.
 
@@ -62,8 +94,7 @@ The input dataset for this report was origin-destination (OD) data from the 2011
 
 These stages are represented in the figure below.
 
-```{r selection, echo=FALSE, fig.cap="Flows selected for analysis of cycling potential across the Menai Bridge. Grey lines represent flows that begin and end within 15 km of the Menai Bridge. ", warning=FALSE}
-l_twoways = od_menai[menai_straight,]
+```{r selection, echo=FALSE, fig.cap="Flows selected for analysis of cycling potential across the Menai Strait. Grey lines represent flows that begin and end within 15 km of the Menai Bridge. ", warning=FALSE}
 l = onewaygeo(l_twoways, attrib = 3:14)
 l$`N. commuters (100s)` = l$`All categories: Method of travel to work` /
                            100
@@ -81,7 +112,7 @@ m
 save_tmap(m, "selection.pdf")
 ```
 
-It is worth describing briefly this dataset. `r nrow(l)` flows were selected by the criteria above. The total number of commuters travelling to work along these flows by all modes, who could potentially use the Menai Bridge, was `r sum(l[[3]])`. Of these, `r sum(l$Bicycle)` reported using a pedal cycle as their main method of travel to work,
+It is worth describing briefly this dataset. `r nrow(l)` flows were selected by the criteria above. The total number of commuters travelling to work along these flows by all modes, who could potentially use bridges crossing the Strait, was `r sum(l[[3]])`. Of these, `r sum(l$Bicycle)` reported using a pedal cycle as their main method of travel to work,
 `r round(100 * sum(l$Bicycle) / sum(l[[3]]), 1)`%.
 
 ```{r, warning=FALSE, echo=FALSE}
@@ -122,7 +153,7 @@ save_tmap(m, "current.pdf")
 
 ## Potential cycle commuters
 
-Of the `r sum(l[[3]])` commuters whose desire line crosses the Menai Strait, barely 1% of cycled. Is this due to the distance of average commuter trips and hills in the region? Or does the infrastructure play a role? The graph below shows the trip distance-frequency distribution of the selected flows. This shows that there are 2 large flows under 5 km in distance and a number of flows between 10 and 15 km. Note that the numbers presented do not account for within-zone flows (people who live and work in the same zone) and people who have no fixed workplace.
+Of the `r sum(l[[3]])` commuters whose desire line crosses the Menai Strait, barely 1% of cycled. Is this due to the distance of average commuter trips and hills in the region? Or does inadequate infrastructure play a role? The graph below shows the trip distance-frequency distribution of the selected flows. This shows that there are 2 large flows under 5 km in distance and a number of flows between 10 and 15 km. Note that the numbers presented do not account for within-zone flows (people who live and work in the same zone) and people who have no fixed workplace.
 
 <!-- , which accounted for  -->
 
@@ -159,7 +190,7 @@ ggplot(lr@data) +
 # plot(distance, lr$govtarget)
 ```
 
-```{r, echo=FALSE, fig.cap="Level of commuter cycling in the 2011 census (black) and under Government Target (blue) and Go Dutch (red) and Ebike scenarios, with the impact of hilliness included. Each point represents a desire line. The diameter of the points is proportional to the number of commuters by all modes for each desire line."}
+```{r, echo=FALSE, fig.cap="Level of commuter cycling in the 2011 census (black) and under Government Target (blue) and Go Dutch (red) and E-bike scenarios, with the impact of hilliness included. Each point represents a desire line. The diameter of the points is proportional to the number of commuters by all modes for each desire line."}
 # with hilliness
 logit_pcycle = -3.894 + (-0.5872 * distance) + (1.832 * sqrt(distance) ) + (0.007956 * distance^2) +
 (-0.2872 * gradient) + (0.01784 * distance * gradient) + (-0.09770 * sqrt(distance) * gradient)
@@ -192,7 +223,7 @@ lr$`Go Dutch` = lr$godutch * l$`All categories: Method of travel to work`
 
 It is clear that the model, which was trained against English data, has a strong aversion to hills. Note that part of this aversion could be due to the fact that hilly places generally have a low level of cycling. For this reason results with and without hilliness included are presented.
 
-To allocate these flows to the transport network, CycleStreets.net was used to find routes converting the straight lines in the 'fastest route' and the R package **stplanr** was used to aggregate overlapping routes. These are illustrated in the map below.
+To allocate these flows to the transport network, CycleStreets.net was used to find routes converting the straight lines in the 'fastest route' and the R package **stplanr** was used to aggregate overlapping routes. Cyclestreets.net does not recognize the Britannia Bridge as a cycleable route; all flows are therefore allocated to the Menai Bridge, and the cycleability of routes which would be optimal across the Britannia Bridge is systematically under-estimated. The results are illustrated in the map below.
 
 ```{r, echo=FALSE, message=FALSE, fig.cap="Cycle commutes allocated to the road network under the Go Dutch scenario, accounting for gradient."}
 rnet = overline(lr_nograd, "Go Dutch")
